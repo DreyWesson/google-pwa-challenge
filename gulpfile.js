@@ -116,6 +116,23 @@ function clean() {
   ]);
 }
 
+
+// Inject a pre-cache manifest into service worker
+function injectManifest() {
+  return workboxBuild.injectManifest({
+    "swDest": "dist/sw.js",
+    "swSrc": "src-sw.js",
+    globDirectory: './dist/',
+    globPatterns: [
+      'index.html',
+      'images/**/*.{svg,png,jpg}'
+    ]
+  }).catch(err => {
+    console.log('Uh oh 😬', err);
+  });
+}
+
+
 // Start local dev server and rebuild on file changes
 function watch() {
 
@@ -130,47 +147,22 @@ function watch() {
     injectChanges: true
   });
 
-  function serviceWorker() {
-    return workboxBuild.injectManifest({
-      globDirectory: 'build',
-      globPatterns: [
-        '**\/*.{js,css,html,png}',
-      ],
-      swSrc: '/src/sw.js',
-      swDest: 'dist/sw.js'
-    }).then(({count, size, warnings}) => {
-      // Optionally, log any warnings and details.
-      warnings.forEach(console.warn);
-      console.log(`${count} files will be precached, totaling ${size} bytes.`);
-    });
-  }
 
   gulp.watch(paths.scripts.src, gulp.series(scripts, inline));
   gulp.watch(paths.styles.src, gulp.series(styles, inline));
   gulp.watch(paths.root.src, dist);
   gulp.watch(paths.images.src, copy);
-  gulp.watch(paths.root.dest, serviceWorker);
+  // gulp.watch(paths.root.dest, injectManifest);
+
 
   gulp.watch('dist/index.html', browserSync.reload);
 }
 
-const dist = gulp.series(gulp.parallel(copy, styles, scripts,serviceWorker), inline);
+const dist = gulp.series(gulp.parallel(copy, styles, scripts), inline, injectManifest);
 const dev = gulp.series(dist, watch);
 
+gulp.task('manifest', injectManifest);
 
-
-
-
-
-
-
-
-
-
-
-
-
-gulp.task('serviceWorker', serviceWorker)
 gulp.task('dev', dev);
 gulp.task('dist', dist);
 gulp.task('default', dev);
